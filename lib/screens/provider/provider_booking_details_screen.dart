@@ -218,6 +218,11 @@ class _ProviderBookingDetailsScreenState
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              if (booking.recoveryStatus == BookingRecoveryStatus.completed &&
+                  booking.originalProviderId != booking.providerId) ...[
+                _RecoveryNoticeCard(booking: booking),
+                const SizedBox(height: 16),
+              ],
               _Card(
                 title: 'Customer Information',
                 children: [
@@ -416,6 +421,72 @@ class _ProviderBookingDetailsScreenState
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _RecoveryNoticeCard extends StatelessWidget {
+  final BookingModel booking;
+
+  const _RecoveryNoticeCard({
+    required this.booking,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const primary = Color(0xFFFF6333);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: primary.withOpacity(0.08),
+        border: Border.all(color: primary.withOpacity(0.35)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            backgroundColor: primary.withOpacity(0.15),
+            child: const Icon(
+              Icons.replay_circle_filled,
+              color: primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Recovered Booking Request',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'This booking came from Feasta’s booking recovery flow. The customer selected your recovery offer, so you are now the assigned catering provider for this event.',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Current Status: ${booking.status}',
+                  style: const TextStyle(
+                    color: primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

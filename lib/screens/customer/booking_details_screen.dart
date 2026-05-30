@@ -61,6 +61,11 @@ class BookingDetailsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              if (booking.recoveryStatus == BookingRecoveryStatus.completed &&
+                  booking.selectedRecoveryOfferId != null) ...[
+                _CustomerRecoveryNoticeCard(booking: booking),
+                const SizedBox(height: 18),
+              ],
               BookingStatusCard(booking: booking),
               const SizedBox(height: 18),
               BookingTimelineCard(bookingId: booking.id),
@@ -438,74 +443,135 @@ class ActionButtons extends StatelessWidget {
   });
 
     Future<void> _cancelBooking(BuildContext context) async {
-    final reasonController = TextEditingController();
+      final reasonController = TextEditingController();
 
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Cancel Booking'),
-          content: TextField(
-            controller: reasonController,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Enter cancellation reason',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context, reasonController.text.trim());
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+      final reason = await showDialog<String>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Cancel Booking'),
+            content: TextField(
+              controller: reasonController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Enter cancellation reason',
               ),
-              child: const Text('Submit'),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context, reasonController.text.trim());
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Submit'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (reason == null) return;
+
+      try {
+        await FeastaRepository().cancelOrRequestBookingCancellation(
+          booking: booking,
+          reason: reason,
         );
-      },
-    );
 
-    if (reason == null) return;
+        if (!context.mounted) return;
 
-    try {
-      await FeastaRepository().cancelOrRequestBookingCancellation(
-        booking: booking,
-        reason: reason,
-      );
+        final isPaidBooking =
+            booking.status == BookingStatus.confirmed ||
+            booking.paymentStatus == PaymentStatus.partiallyPaid ||
+            booking.paymentStatus == PaymentStatus.paid;
 
-      if (!context.mounted) return;
-
-      final isPaidBooking =
-          booking.status == BookingStatus.confirmed ||
-          booking.paymentStatus == PaymentStatus.partiallyPaid ||
-          booking.paymentStatus == PaymentStatus.paid;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isPaidBooking
-                ? 'Cancellation request submitted to provider.'
-                : 'Booking cancelled successfully.',
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isPaidBooking
+                  ? 'Cancellation request submitted to provider.'
+                  : 'Booking cancelled successfully.',
+            ),
           ),
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
+        );
+      } catch (e) {
+        if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+          ),
+        );
+      }
     }
-  }
+
+    Future<void> _cancelRecoveryRequest(BuildContext context) async {
+      final reasonController = TextEditingController();
+
+      final reason = await showDialog<String>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Cancel Recovery Request'),
+            content: TextField(
+              controller: reasonController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Enter reason for cancelling recovery',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context, reasonController.text.trim());
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Cancel Recovery'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (reason == null) return;
+
+      try {
+        await FeastaRepository().cancelRecoveryRequest(
+          booking: booking,
+          reason: reason,
+        );
+
+        if (!context.mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Recovery request cancelled.'),
+          ),
+        );
+      } catch (e) {
+        if (!context.mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+          ),
+        );
+      }
+    }
 
   @override
   Widget build(BuildContext context) {
@@ -625,11 +691,30 @@ class ActionButtons extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: OutlinedButton.icon(
+              onPressed: () => _cancelRecoveryRequest(context),
+              icon: const Icon(Icons.cancel_outlined),
+              label: const Text(
+                'Cancel Recovery Request',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
         ],
 
-        if (booking.status == BookingStatus.pending ||
-          booking.status == BookingStatus.waitingPayment ||
-          booking.status == BookingStatus.confirmed)
+        if ((booking.status == BookingStatus.pending ||
+        booking.status == BookingStatus.waitingPayment ||
+        booking.status == BookingStatus.confirmed) &&
+        booking.recoveryStatus != BookingRecoveryStatus.open &&
+        booking.recoveryStatus != BookingRecoveryStatus.offerReceived)
         SizedBox(
           width: double.infinity,
           height: 54,
@@ -1083,6 +1168,74 @@ class _RowItem extends StatelessWidget {
                 color: valueColor ?? Colors.black,
                 fontWeight: isBold ? FontWeight.w900 : FontWeight.w700,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomerRecoveryNoticeCard extends StatelessWidget {
+  final BookingModel booking;
+
+  const _CustomerRecoveryNoticeCard({
+    required this.booking,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const primary = Color(0xFFFF6333);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: primary.withOpacity(0.08),
+        border: Border.all(color: primary.withOpacity(0.35)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            backgroundColor: primary.withOpacity(0.15),
+            child: const Icon(
+              Icons.replay_circle_filled,
+              color: primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Recovered Booking',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'This booking was continued through Feasta’s booking recovery flow. Your new catering provider is ${booking.providerBusinessName}.',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (booking.status == BookingStatus.waitingPayment) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Please complete the down payment to confirm this recovered booking.',
+                    style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

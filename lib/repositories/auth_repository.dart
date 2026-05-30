@@ -94,6 +94,7 @@ class AuthRepository {
     required List<String> serviceAreas,
     required List<String> eventTypesSupported,
     required String providerServiceType,
+    required String providerCategory,
   }) async {
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
@@ -151,10 +152,14 @@ class AuthRepository {
       'serviceAreas': serviceAreas,
       'eventTypesSupported': eventTypesSupported,
       'providerServiceType': providerServiceType,
+      'providerCategory': providerCategory,
       'minPrice': 0,
       'maxPrice': 0,
       'ratingAverage': 0,
       'reviewCount': 0,
+      'totalCompletedBookings': 0,
+      'totalViews': 0,
+      'favoriteCount': 0,
       'verificationStatus': ProviderVerificationStatus.pending,
       'businessPermitUrl': null,
       'validIdUrl': null,

@@ -29,12 +29,19 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
     'Reviews',
   ];
 
+   @override
+  void initState() {
+    super.initState();
+
+    _repository.incrementProviderViewCount(widget.provider.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFFF6333);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [

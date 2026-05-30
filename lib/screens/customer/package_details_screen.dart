@@ -20,7 +20,7 @@ class PackageDetailsScreen extends StatelessWidget {
     final FeastaRepository repository = FeastaRepository();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [

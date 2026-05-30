@@ -175,8 +175,12 @@ class ProviderModel {
   final double maxPrice;
   final double ratingAverage;
   final int reviewCount;
+  final int totalCompletedBookings;
+  final int totalViews;
+  final int favoriteCount;
   final String verificationStatus;
   final String providerServiceType;
+  final String providerCategory;
   final String? businessPermitUrl;
   final String? validIdUrl;
   final String? birDocumentUrl;
@@ -211,8 +215,12 @@ class ProviderModel {
     required this.maxPrice,
     required this.ratingAverage,
     required this.reviewCount,
+    required this.totalCompletedBookings,
+    required this.totalViews,
+    required this.favoriteCount,
     required this.verificationStatus,
     required this.providerServiceType,
+    required this.providerCategory,
     this.businessPermitUrl,
     this.validIdUrl,
     this.birDocumentUrl,
@@ -253,8 +261,13 @@ class ProviderModel {
       maxPrice: doubleFromValue(data['maxPrice']),
       ratingAverage: doubleFromValue(data['ratingAverage']),
       reviewCount: intFromValue(data['reviewCount']),
+      totalCompletedBookings:
+          ((data['totalCompletedBookings'] ?? 0) as num).toInt(),
+      totalViews: ((data['totalViews'] ?? 0) as num).toInt(),
+      favoriteCount: ((data['favoriteCount'] ?? 0) as num).toInt(),
       verificationStatus: data['verificationStatus'] ?? 'pending',
       providerServiceType: data['providerServiceType'] ?? 'catering',
+      providerCategory: data['providerCategory'] ?? 'catering_service',
       businessPermitUrl: data['businessPermitUrl'],
       validIdUrl: data['validIdUrl'],
       birDocumentUrl: data['birDocumentUrl'],

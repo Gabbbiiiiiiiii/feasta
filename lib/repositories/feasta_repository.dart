@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../core/constants/firestore_collections.dart';
 import '../core/constants/status_constants.dart';
 import '../models/feasta_models.dart';
+import '../core/helpers/provider_category_helper.dart';
 
 class FeastaRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -43,16 +44,181 @@ class FeastaRepository {
     });
   }
 
+  Future<void> incrementProviderViewCount(String providerId) async {
+  await _db.collection(FirestoreCollections.providers).doc(providerId).update({
+    'totalViews': FieldValue.increment(1),
+  });
+}
+
+  List<ProviderModel> _sortProvidersByPopularity(
+  List<ProviderModel> providers,
+  ) {
+    providers.sort((a, b) {
+      final completedBookingsCompare =
+          b.totalCompletedBookings.compareTo(a.totalCompletedBookings);
+      if (completedBookingsCompare != 0) return completedBookingsCompare;
+
+      final favoriteCompare = b.favoriteCount.compareTo(a.favoriteCount);
+      if (favoriteCompare != 0) return favoriteCompare;
+
+      final viewsCompare = b.totalViews.compareTo(a.totalViews);
+      if (viewsCompare != 0) return viewsCompare;
+
+      final ratingCompare = b.ratingAverage.compareTo(a.ratingAverage);
+      if (ratingCompare != 0) return ratingCompare;
+
+      final reviewCompare = b.reviewCount.compareTo(a.reviewCount);
+      if (reviewCompare != 0) return reviewCompare;
+
+      return a.businessName.toLowerCase().compareTo(
+            b.businessName.toLowerCase(),
+          );
+    });
+
+    return providers;
+  }
+
   Stream<List<ProviderModel>> verifiedProviders() {
     return _db
         .collection(FirestoreCollections.providers)
         .where('verificationStatus', isEqualTo: ProviderVerificationStatus.verified)
         .where('isActive', isEqualTo: true)
+        .where('providerServiceType', isEqualTo: 'catering')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map(ProviderModel.fromDoc).toList();
+      final providers = snapshot.docs.map(ProviderModel.fromDoc).toList();
+      return _sortProvidersByPopularity(providers);
     });
   }
+
+Stream<List<ProviderModel>> homeCateringProviders({
+  String eventType = 'All',
+  bool nearOrmoc = false,
+  bool rating4Plus = false,
+  bool budgetFriendly = false,
+}) {
+  if (eventType == 'All') {
+    return _db
+        .collection(FirestoreCollections.providers)
+        .where('verificationStatus',
+            isEqualTo: ProviderVerificationStatus.verified)
+        .where('isActive', isEqualTo: true)
+        .where('providerServiceType', isEqualTo: 'catering')
+        .snapshots()
+        .map((snapshot) {
+      var providers = snapshot.docs.map(ProviderModel.fromDoc).toList();
+
+      if (nearOrmoc) {
+        providers = providers.where((provider) {
+          final location = provider.location.toLowerCase();
+          final city = provider.city.toLowerCase();
+          return location.contains('ormoc') || city.contains('ormoc');
+        }).toList();
+      }
+
+      if (rating4Plus) {
+        providers = providers
+            .where((provider) => provider.ratingAverage >= 4.0)
+            .toList();
+      }
+
+      if (budgetFriendly) {
+        providers = providers
+            .where((provider) =>
+                provider.minPrice <= 15000 || provider.maxPrice <= 15000)
+            .toList();
+      }
+
+      return _sortProvidersByPopularity(providers);
+    });
+  }
+
+  return _db
+      .collection(FirestoreCollections.packages)
+      .where('isActive', isEqualTo: true)
+      .where('eventType', isEqualTo: eventType)
+      .snapshots()
+      .asyncMap((snapshot) async {
+    final providerIds = snapshot.docs
+        .map((doc) => doc.data()['providerId'])
+        .where((id) => id != null && id.toString().isNotEmpty)
+        .map((id) => id.toString())
+        .toSet()
+        .toList();
+
+    final providers = <ProviderModel>[];
+
+    for (final providerId in providerIds) {
+      final providerDoc = await _db
+          .collection(FirestoreCollections.providers)
+          .doc(providerId)
+          .get();
+
+      if (!providerDoc.exists) continue;
+
+      final provider = ProviderModel.fromDoc(providerDoc);
+
+      if (provider.verificationStatus != ProviderVerificationStatus.verified) {
+        continue;
+      }
+
+      if (!provider.isActive) {
+        continue;
+      }
+
+      if (provider.providerServiceType != 'catering') {
+        continue;
+      }
+
+      providers.add(provider);
+    }
+
+    var filteredProviders = providers;
+
+    if (nearOrmoc) {
+      filteredProviders = filteredProviders.where((provider) {
+        final location = provider.location.toLowerCase();
+        final city = provider.city.toLowerCase();
+        return location.contains('ormoc') || city.contains('ormoc');
+      }).toList();
+    }
+
+    if (rating4Plus) {
+      filteredProviders = filteredProviders
+          .where((provider) => provider.ratingAverage >= 4.0)
+          .toList();
+    }
+
+    if (budgetFriendly) {
+      filteredProviders = filteredProviders
+          .where((provider) =>
+              provider.minPrice <= 15000 || provider.maxPrice <= 15000)
+          .toList();
+    }
+
+    return _sortProvidersByPopularity(filteredProviders);
+  });
+}
+
+  Stream<List<ProviderModel>> verifiedAddonProviders({
+  String category = 'all',
+    }) {
+      return _db
+          .collection(FirestoreCollections.providers)
+          .where('verificationStatus', isEqualTo: ProviderVerificationStatus.verified)
+          .where('isActive', isEqualTo: true)
+          .where('providerServiceType', isEqualTo: 'addon')
+          .snapshots()
+          .map((snapshot) {
+        final providers = snapshot.docs.map(ProviderModel.fromDoc).toList();
+
+        if (category == 'all') return providers;
+
+        return providers
+            .where((provider) => provider.providerCategory == category)
+            .toList();
+      });
+    }
 
   Stream<List<ProviderModel>> featuredProviders() {
     return _db
@@ -60,6 +226,7 @@ class FeastaRepository {
         .where('verificationStatus', isEqualTo: ProviderVerificationStatus.verified)
         .where('isActive', isEqualTo: true)
         .where('isFeatured', isEqualTo: true)
+        .where('providerServiceType', isEqualTo: 'catering')
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map(ProviderModel.fromDoc).toList();
@@ -374,6 +541,123 @@ Future<void> selectRecoveryOffer({
       'readAt': null,
       'createdAt': now,
     });
+  }
+
+  await batch.commit();
+}
+
+Future<void> cancelRecoveryRequest({
+  required BookingModel booking,
+  required String reason,
+}) async {
+  if (booking.customerId != currentUid) {
+    throw Exception('You are not allowed to cancel this recovery request.');
+  }
+
+  if (booking.recoveryStatus != BookingRecoveryStatus.open &&
+      booking.recoveryStatus != BookingRecoveryStatus.offerReceived) {
+    throw Exception('This booking is not currently under recovery.');
+  }
+
+  final now = FieldValue.serverTimestamp();
+
+  final batch = _db.batch();
+
+  final bookingRef =
+      _db.collection(FirestoreCollections.bookings).doc(booking.id);
+
+  final timelineRef =
+      _db.collection(FirestoreCollections.bookingTimelines).doc();
+
+  batch.update(bookingRef, {
+    'status': BookingStatus.cancelled,
+    'recoveryStatus': BookingRecoveryStatus.cancelled,
+    'cancellationStatus': 'approved',
+    'cancellationReason': reason.trim(),
+    'cancelledAt': now,
+    'updatedAt': now,
+  });
+
+  batch.set(timelineRef, {
+    'bookingId': booking.id,
+    'status': BookingStatus.cancelled,
+    'title': 'Recovery Request Cancelled',
+    'description': reason.trim().isEmpty
+        ? 'Customer cancelled the booking recovery request.'
+        : reason.trim(),
+    'createdBy': currentUid,
+    'createdByRole': UserRoles.customer,
+    'createdAt': now,
+  });
+
+  final offersSnapshot = await _db
+      .collection(FirestoreCollections.bookingRecoveryOffers)
+      .where('bookingId', isEqualTo: booking.id)
+      .where('status', isEqualTo: RecoveryOfferStatus.offered)
+      .get();
+
+  for (final doc in offersSnapshot.docs) {
+    batch.update(doc.reference, {
+      'status': RecoveryOfferStatus.declined,
+      'declinedAt': now,
+    });
+  }
+
+  final addonRequestsSnapshot = await _db
+      .collection(FirestoreCollections.addonRequests)
+      .where('bookingId', isEqualTo: booking.id)
+      .get();
+
+  for (final doc in addonRequestsSnapshot.docs) {
+    final data = doc.data();
+
+    final currentStatus = data['status'];
+
+    if (currentStatus == AddonRequestStatus.cancelled ||
+        currentStatus == AddonRequestStatus.rejected ||
+        currentStatus == AddonRequestStatus.completed) {
+      continue;
+    }
+
+    final paymentStatus = data['paymentStatus'];
+
+    batch.update(doc.reference, {
+      'status': AddonRequestStatus.cancelled,
+      'paymentStatus': paymentStatus == 'paid' ? 'refund_review' : 'cancelled',
+      'linkStatus': AddonLinkStatus.cancelledDueToMainBookingFailed,
+      'mainBookingStatus': BookingStatus.cancelled,
+      'currentCateringProviderId': null,
+      'updatedAt': now,
+    });
+
+    final addonProviderId = data['addonProviderId'];
+
+    if (addonProviderId != null && addonProviderId.toString().isNotEmpty) {
+      final addonProviderDoc = await _db
+          .collection(FirestoreCollections.providers)
+          .doc(addonProviderId)
+          .get();
+
+      final addonProviderOwnerId = addonProviderDoc.data()?['ownerId'];
+
+      if (addonProviderOwnerId != null) {
+        final addonNotificationRef =
+            _db.collection(FirestoreCollections.notifications).doc();
+
+        batch.set(addonNotificationRef, {
+          'userId': addonProviderOwnerId,
+          'title': 'Recovery Request Cancelled',
+          'message':
+              '${booking.customerFirstName} ${booking.customerLastName} cancelled the recovery request. The related add-on service request was cancelled.',
+          'type': NotificationType.booking,
+          'relatedId': doc.id,
+          'relatedCollection': FirestoreCollections.addonRequests,
+          'isRead': false,
+          'readAt': null,
+          'createdAt': now,
+        });
+      }
+    }
   }
 
   await batch.commit();
@@ -1020,6 +1304,25 @@ Future<void> rejectCancellationRequest({
     });
   }
 
+  Stream<List<BookingModel>> customerCompletedBookings() {
+  return _db
+      .collection(FirestoreCollections.bookings)
+      .where('customerId', isEqualTo: currentUid)
+      .where('status', isEqualTo: BookingStatus.completed)
+      .snapshots()
+      .map((snapshot) {
+    final bookings = snapshot.docs.map(BookingModel.fromDoc).toList();
+
+    bookings.sort((a, b) {
+      final aDate = a.completedAt ?? a.createdAt ?? DateTime(2000);
+      final bDate = b.completedAt ?? b.createdAt ?? DateTime(2000);
+      return bDate.compareTo(aDate);
+    });
+
+    return bookings;
+  });
+}
+
   Stream<List<BookingModel>> providerBookings(String providerId) {
     return _db
         .collection(FirestoreCollections.bookings)
@@ -1203,6 +1506,59 @@ Future<void> markDownPaymentPaid({
     });
   }
 
+  final addonRequestsSnapshot = await _db
+    .collection(FirestoreCollections.addonRequests)
+    .where('bookingId', isEqualTo: booking.id)
+    .get();
+
+for (final doc in addonRequestsSnapshot.docs) {
+  final data = doc.data();
+
+  final currentStatus = data['status'];
+
+  if (currentStatus == AddonRequestStatus.cancelled ||
+      currentStatus == AddonRequestStatus.rejected ||
+      currentStatus == AddonRequestStatus.completed) {
+    continue;
+  }
+
+  batch.update(doc.reference, {
+    'mainBookingStatus': BookingStatus.confirmed,
+    'linkStatus': AddonLinkStatus.active,
+    'currentCateringProviderId': booking.providerId,
+    'updatedAt': now,
+  });
+
+  final addonProviderId = data['addonProviderId'];
+
+  if (addonProviderId != null && addonProviderId.toString().isNotEmpty) {
+    final addonProviderDoc = await _db
+        .collection(FirestoreCollections.providers)
+        .doc(addonProviderId)
+        .get();
+
+    final addonProviderOwnerId = addonProviderDoc.data()?['ownerId'];
+
+    if (addonProviderOwnerId != null) {
+      final addonNotificationRef =
+          _db.collection(FirestoreCollections.notifications).doc();
+
+      batch.set(addonNotificationRef, {
+        'userId': addonProviderOwnerId,
+        'title': 'Main Booking Confirmed',
+        'message':
+            '${booking.customerFirstName} ${booking.customerLastName} confirmed the main catering booking. Your add-on service request is now active.',
+        'type': NotificationType.booking,
+        'relatedId': doc.id,
+        'relatedCollection': FirestoreCollections.addonRequests,
+        'isRead': false,
+        'readAt': null,
+        'createdAt': now,
+      });
+    }
+  }
+}
+
   await batch.commit();
 }
 
@@ -1340,24 +1696,32 @@ Future<void> markAddonPaymentPaid({
 }
 
   Future<void> addToFavorites({
-    required ProviderModel provider,
-  }) async {
-    final favoriteId = '${currentUid}_${provider.id}';
+  required ProviderModel provider,
+}) async {
+  final favoriteId = '${currentUid}_${provider.id}';
 
-    await _db.collection(FirestoreCollections.favorites).doc(favoriteId).set({
-      'customerId': currentUid,
-      'providerId': provider.id,
-      'providerBusinessName': provider.businessName,
-      'providerImageUrl': provider.coverImageUrl,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
+  await _db.collection(FirestoreCollections.favorites).doc(favoriteId).set({
+    'customerId': currentUid,
+    'providerId': provider.id,
+    'providerBusinessName': provider.businessName,
+    'providerImageUrl': provider.coverImageUrl,
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+
+  await _db.collection(FirestoreCollections.providers).doc(provider.id).update({
+    'favoriteCount': FieldValue.increment(1),
+  });
+}
 
   Future<void> removeFromFavorites(String providerId) async {
-    final favoriteId = '${currentUid}_$providerId';
+  final favoriteId = '${currentUid}_$providerId';
 
-    await _db.collection(FirestoreCollections.favorites).doc(favoriteId).delete();
-  }
+  await _db.collection(FirestoreCollections.favorites).doc(favoriteId).delete();
+
+  await _db.collection(FirestoreCollections.providers).doc(providerId).update({
+    'favoriteCount': FieldValue.increment(-1),
+  });
+}
 
   Stream<QuerySnapshot<Map<String, dynamic>>> myFavorites() {
     return _db
@@ -1854,6 +2218,52 @@ Future<void> sendRecoveryOffer({
   await batch.commit();
 }
 
+Stream<List<BookingModel>> recoveryOpportunitiesForProvider(
+  String providerId,
+) {
+  return _db
+      .collection(FirestoreCollections.bookings)
+      .where('recoveryStatus', whereIn: [
+        BookingRecoveryStatus.open,
+        BookingRecoveryStatus.offerReceived,
+      ])
+      .snapshots()
+      .map((snapshot) {
+    final bookings = snapshot.docs.map(BookingModel.fromDoc).toList();
+
+    return bookings.where((booking) {
+      final isNotOriginalProvider = booking.originalProviderId != providerId;
+      final isNotCurrentProvider = booking.currentProviderId != providerId;
+      final hasNotRejectedBefore =
+          !booking.rejectedByProviderIds.contains(providerId);
+
+      return isNotOriginalProvider &&
+          isNotCurrentProvider &&
+          hasNotRejectedBefore;
+    }).toList();
+  });
+}
+
+Stream<List<RecoveryOfferModel>> recoveryOffersByProvider(
+  String providerId,
+) {
+  return _db
+      .collection(FirestoreCollections.bookingRecoveryOffers)
+      .where('offeringProviderId', isEqualTo: providerId)
+      .snapshots()
+      .map((snapshot) {
+    final offers = snapshot.docs.map(RecoveryOfferModel.fromDoc).toList();
+
+    offers.sort((a, b) {
+      final aDate = a.createdAt ?? DateTime(2000);
+      final bDate = b.createdAt ?? DateTime(2000);
+      return bDate.compareTo(aDate);
+    });
+
+    return offers;
+  });
+}
+
  Stream<DocumentSnapshot<Map<String, dynamic>>> chatRoomStream(
   String chatRoomId,
 ) {
@@ -1930,10 +2340,11 @@ Future<void> markChatAsRead({
   required double? maxBudget,
 }) {
   return _db
-      .collection(FirestoreCollections.providers)
-      .where('verificationStatus', isEqualTo: ProviderVerificationStatus.verified)
-      .where('isActive', isEqualTo: true)
-      .snapshots()
+    .collection(FirestoreCollections.providers)
+    .where('verificationStatus', isEqualTo: ProviderVerificationStatus.verified)
+    .where('isActive', isEqualTo: true)
+    .where('providerServiceType', isEqualTo: 'catering')
+    .snapshots()
       .map((snapshot) {
     final query = keyword.trim().toLowerCase();
     final selectedEventType = eventType.trim().toLowerCase();
@@ -1978,6 +2389,72 @@ Future<void> markChatAsRead({
     }).toList();
   });
  }
+
+Stream<List<ProviderModel>> searchAllVerifiedProviders({
+  required String keyword,
+  required String eventType,
+  required String location,
+  required double? minBudget,
+  required double? maxBudget,
+}) {
+  return _db
+      .collection(FirestoreCollections.providers)
+      .where('verificationStatus', isEqualTo: ProviderVerificationStatus.verified)
+      .where('isActive', isEqualTo: true)
+      .snapshots()
+      .map((snapshot) {
+    final query = keyword.trim().toLowerCase();
+    final selectedEventType = eventType.trim().toLowerCase();
+    final selectedLocation = location.trim().toLowerCase();
+
+    final providers = snapshot.docs.map(ProviderModel.fromDoc).toList();
+
+    return providers.where((provider) {
+      final businessName = provider.businessName.toLowerCase();
+      final providerLocation = provider.location.toLowerCase();
+      final city = provider.city.toLowerCase();
+      final province = provider.province.toLowerCase();
+      final category = provider.providerCategory.toLowerCase();
+      final serviceType = provider.providerServiceType.toLowerCase();
+
+      final categoryLabel =
+          providerCategoryLabel(provider.providerCategory).toLowerCase();
+
+      final matchesKeyword = query.isEmpty ||
+          businessName.contains(query) ||
+          providerLocation.contains(query) ||
+          city.contains(query) ||
+          province.contains(query) ||
+          category.contains(query) ||
+          categoryLabel.contains(query) ||
+          serviceType.contains(query);
+
+      final matchesEventType = selectedEventType == 'all' ||
+          selectedEventType.isEmpty ||
+          provider.eventTypesSupported.any(
+            (type) => type.toLowerCase() == selectedEventType,
+          );
+
+      final matchesLocation = selectedLocation.isEmpty ||
+          providerLocation.contains(selectedLocation) ||
+          city.contains(selectedLocation) ||
+          province.contains(selectedLocation);
+
+      final matchesMinBudget =
+          minBudget == null || provider.maxPrice >= minBudget;
+
+      final matchesMaxBudget =
+          maxBudget == null || provider.minPrice <= maxBudget;
+
+      return matchesKeyword &&
+          matchesEventType &&
+          matchesLocation &&
+          matchesMinBudget &&
+          matchesMaxBudget;
+    }).toList();
+  });
+}
+
  Stream<QuerySnapshot<Map<String, dynamic>>> providerReviews(String providerId) {
   return _db
       .collection(FirestoreCollections.reviews)
@@ -2001,6 +2478,9 @@ Future<void> markChatAsRead({
   final bookingRef =
       _db.collection(FirestoreCollections.bookings).doc(booking.id);
 
+  final providerRef =
+      _db.collection(FirestoreCollections.providers).doc(booking.providerId);
+
   final timelineRef =
       _db.collection(FirestoreCollections.bookingTimelines).doc();
 
@@ -2010,6 +2490,11 @@ Future<void> markChatAsRead({
   batch.update(bookingRef, {
     'status': BookingStatus.completed,
     'completedAt': now,
+    'updatedAt': now,
+  });
+
+  batch.update(providerRef, {
+    'totalCompletedBookings': FieldValue.increment(1),
     'updatedAt': now,
   });
 
@@ -2038,7 +2523,7 @@ Future<void> markChatAsRead({
   });
 
   await batch.commit();
- }
+}
  Stream<List<PackageModel>> myProviderPackages(String providerId) {
   return _db
       .collection(FirestoreCollections.packages)

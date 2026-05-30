@@ -87,6 +87,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         serviceAreas: serviceAreas,
         eventTypesSupported: eventTypesSupported,
         providerServiceType: selectedProviderServiceType,
+        providerCategory: selectedProviderCategory,
       );
 
       if (!mounted) return;
@@ -104,6 +105,34 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
       }
     }
   }
+
+  String selectedProviderCategory = 'catering_service';
+
+final Map<String, String> cateringCategories = {
+  'catering_service': 'Catering Service',
+  'food_trays_packed_meals': 'Food Trays / Packed Meals',
+  'catering_event_styling': 'Catering and Event Styling',
+};
+
+final Map<String, String> addonCategories = {
+  'photographer': 'Photographer',
+  'videographer': 'Videographer',
+  'photo_booth': 'Photo Booth',
+  'event_coordinator': 'Event Coordinator',
+  'event_host_emcee': 'Event Host / Emcee',
+  'sound_system': 'Sound System',
+  'lights_and_sounds': 'Lights and Sounds',
+  'singer_band': 'Singer / Band',
+  'dancer_performer': 'Dancer / Performer',
+  'decorator_event_stylist': 'Decorator / Event Stylist',
+  'florist': 'Florist',
+  'cake_provider': 'Cake Provider',
+  'gown_suit_rental': 'Gown / Suit Rental',
+  'car_rental': 'Car Rental',
+  'venue_provider': 'Venue Provider',
+  'tables_chairs_rental': 'Tables and Chairs Rental',
+  'other_event_service': 'Other Event Service',
+};
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -193,29 +222,63 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
               const SizedBox(height: 18),
 
               DropdownButtonFormField<String>(
-                value: selectedProviderServiceType,
-                decoration: const InputDecoration(
-                  labelText: 'Provider Service Type',
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'catering',
-                    child: Text('Catering Provider'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'addon',
-                    child: Text('Add-on / Event Service Provider'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-
-                  setState(() {
-                    selectedProviderServiceType = value;
-                  });
-                },
+              value: selectedProviderServiceType,
+              decoration: const InputDecoration(
+                labelText: 'Provider Type',
               ),
-              const SizedBox(height: 16),
+              items: const [
+                DropdownMenuItem(
+                  value: 'catering',
+                  child: Text('Catering Provider'),
+                ),
+                DropdownMenuItem(
+                  value: 'addon',
+                  child: Text('Add-on / Event Service Provider'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+
+                setState(() {
+                  selectedProviderServiceType = value;
+
+                  if (value == 'catering') {
+                    selectedProviderCategory = 'catering_service';
+                  } else {
+                    selectedProviderCategory = 'photographer';
+                  }
+                });
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            DropdownButtonFormField<String>(
+              value: selectedProviderCategory,
+              decoration: const InputDecoration(
+                labelText: 'Provider Category',
+              ),
+              items: (selectedProviderServiceType == 'catering'
+                      ? cateringCategories
+                      : addonCategories)
+                  .entries
+                  .map(
+                    (entry) => DropdownMenuItem<String>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+
+                setState(() {
+                  selectedProviderCategory = value;
+                });
+              },
+            ),
+
+            const SizedBox(height: 16),
 
               _TextInput(
                 label: 'Business Name',

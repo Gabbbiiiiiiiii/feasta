@@ -10,6 +10,9 @@ import 'provider_packages_screen.dart';
 import 'provider_addons_screen.dart';
 import 'provider_menu_items_screen.dart';
 import 'provider_addon_requests_screen.dart';
+import 'provider_recovery_opportunities_screen.dart';
+import 'provider_my_recovery_offers_screen.dart';
+import '../../core/helpers/provider_category_helper.dart';
 
 class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
@@ -174,7 +177,28 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 6),
+
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: primary.withOpacity(0.10),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                providerCategoryLabel(provider.providerCategory),
+                                style: const TextStyle(
+                                  color: primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 6),
                             Text(
                               'Verification: ${provider.verificationStatus}',
                               style: TextStyle(
@@ -246,8 +270,53 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                                   ),
                                 ),
                               ),
-                            ],
+                              const SizedBox(height: 10),
 
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProviderRecoveryOpportunitiesScreen(
+                                          provider: provider,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.replay_circle_filled),
+                                  label: const Text(
+                                    'Recovery Opportunities',
+                                    style: TextStyle(fontWeight: FontWeight.w900),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProviderMyRecoveryOffersScreen(
+                                          provider: provider,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.history),
+                                  label: const Text(
+                                    'My Recovery Offers',
+                                    style: TextStyle(fontWeight: FontWeight.w900),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            
                             if (isAddonProvider) ...[
                               SizedBox(
                                 width: double.infinity,

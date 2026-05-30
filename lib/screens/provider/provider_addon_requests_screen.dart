@@ -250,11 +250,79 @@ class AddonRequestCard extends StatelessWidget {
     return '${date.month}/${date.day}/${date.year}';
   }
 
+  String paymentStatusLabel(String status) {
+  switch (status) {
+    case 'unpaid':
+      return 'Unpaid';
+    case 'waiting_payment':
+      return 'Waiting for Payment';
+    case 'paid':
+      return 'Paid';
+    case 'cancelled':
+      return 'Cancelled';
+    case 'refund_review':
+      return 'Refund Review';
+    case 'refunded':
+      return 'Refunded';
+    default:
+      return status;
+  }
+}
+
+Color paymentStatusColor(String status) {
+  switch (status) {
+    case 'paid':
+      return Colors.green;
+    case 'waiting_payment':
+      return Colors.orange;
+    case 'cancelled':
+    case 'refund_review':
+      return Colors.red;
+    default:
+      return Colors.grey;
+  }
+}
+
+String linkStatusLabel(String status) {
+  switch (status) {
+    case AddonLinkStatus.active:
+      return 'Active';
+    case AddonLinkStatus.awaitingCustomerRecoverySelection:
+      return 'On Hold - Booking Recovery';
+    case AddonLinkStatus.relinked:
+      return 'Relinked to New Caterer';
+    case AddonLinkStatus.cancelledDueToMainBookingFailed:
+      return 'Cancelled - Main Booking Failed';
+    default:
+      return status;
+  }
+}
+
+Color linkStatusColor(String status) {
+  switch (status) {
+    case AddonLinkStatus.active:
+    case AddonLinkStatus.relinked:
+      return Colors.green;
+    case AddonLinkStatus.awaitingCustomerRecoverySelection:
+      return Colors.orange;
+    case AddonLinkStatus.cancelledDueToMainBookingFailed:
+      return Colors.red;
+    default:
+      return Colors.grey;
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFFF6333);
 
     final canRespond = request.status == AddonRequestStatus.pending;
+
+    final paymentColor = paymentStatusColor(request.paymentStatus);
+    final linkColor = linkStatusColor(request.linkStatus);
+
+    final isOnRecoveryHold =
+        request.linkStatus == AddonLinkStatus.awaitingCustomerRecoverySelection;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -359,6 +427,48 @@ class AddonRequestCard extends StatelessWidget {
             ),
           ),
 
+          const SizedBox(height: 12),
+
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _StatusChip(
+                label: 'Main: ${request.mainBookingStatus}',
+                color: Colors.blueGrey,
+              ),
+              _StatusChip(
+                label: 'Payment: ${paymentStatusLabel(request.paymentStatus)}',
+                color: paymentColor,
+              ),
+              _StatusChip(
+                label: linkStatusLabel(request.linkStatus),
+                color: linkColor,
+              ),
+            ],
+          ),
+
+          if (isOnRecoveryHold) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Colors.orange.withOpacity(0.35),
+                ),
+              ),
+              child: const Text(
+                'This request is currently on hold because the main catering booking is under recovery. The customer cannot pay this add-on service until they select and confirm a new catering provider.',
+                style: TextStyle(
+                  height: 1.4,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+
           if (request.rejectedReason != null &&
               request.rejectedReason!.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -403,6 +513,38 @@ class AddonRequestCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _StatusChip({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
