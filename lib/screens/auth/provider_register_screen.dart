@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../repositories/auth_repository.dart';
-import '../provider/provider_dashboard_screen.dart';
+import 'email_verification_screen.dart';
 
 class ProviderRegisterScreen extends StatefulWidget {
   const ProviderRegisterScreen({super.key});
@@ -94,7 +94,11 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const ProviderDashboardScreen()),
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationScreen(
+            email: emailController.text.trim(),
+          ),
+        ),
         (_) => false,
       );
     } catch (e) {

@@ -20,7 +20,7 @@ class RoleSelectionScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
             const Text(
-              'How do you want to use Feasta?',
+              'How would you like to use Feasta?',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 26,
@@ -29,7 +29,7 @@ class RoleSelectionScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Choose the account type that matches your role.',
+              'Choose the account type that best fits your role.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
@@ -37,7 +37,7 @@ class RoleSelectionScreen extends StatelessWidget {
             _RoleCard(
               icon: Icons.person_outline,
               title: 'Customer',
-              description: 'Find, customize, and book catering services.',
+              description: 'Browse, customize, and book catering services.',
               onTap: () {
                 Navigator.push(
                   context,
@@ -51,7 +51,7 @@ class RoleSelectionScreen extends StatelessWidget {
             _RoleCard(
               icon: Icons.storefront_outlined,
               title: 'Provider',
-              description: 'Manage your catering business and bookings.',
+              description: 'Register your catering or event service business and manage bookings.',
               onTap: () {
                 Navigator.push(
                   context,
@@ -61,13 +61,6 @@ class RoleSelectionScreen extends StatelessWidget {
                 );
               },
             ),
-            const Spacer(),
-            const Text(
-              'Admin accounts are created manually for security.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
           ],
         ),
       ),

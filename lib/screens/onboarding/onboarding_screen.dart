@@ -22,19 +22,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       icon: Icons.search_rounded,
       title: 'Browse Verified Providers',
       description:
-          'Discover verified catering and event service providers in Ormoc City with packages, ratings, and real reviews.',
+          'Discover trusted catering and event service providers in Ormoc City with packages, ratings, and real reviews.',
     ),
     _OnboardingPageData(
       icon: Icons.auto_awesome_rounded,
       title: 'Customize Your Event',
       description:
-          'Personalize packages, menus, decorations, tables, chairs, and add-ons based on your event needs.',
+          'Personalize packages, menus, decorations, chairs, tables, and add-ons based on your event needs.',
     ),
     _OnboardingPageData(
       icon: Icons.verified_user_outlined,
       title: 'Book, Track, and Pay Securely',
       description:
-          'Submit booking requests, track status, chat after booking, and pay down payment securely.',
+          'Submit booking requests, track your status, chat after booking, and pay your down payment securely.',
     ),
   ];
 

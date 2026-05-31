@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/constants/firestore_collections.dart';
 import '../core/constants/status_constants.dart';
@@ -76,6 +77,16 @@ class AuthRepository {
     });
 
     await batch.commit();
+
+    await user.sendEmailVerification();
+
+    await userRef.update({
+      'isEmailVerified': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    // Important: prevent unverified users from staying logged in.
+    await _auth.signOut();
   }
 
   Future<void> registerProvider({
@@ -194,6 +205,31 @@ class AuthRepository {
     });
 
     await batch.commit();
+
+    await user.sendEmailVerification();
+
+    await userRef.update({
+      'isEmailVerified': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    // Important: prevent unverified users from staying logged in.
+    await _auth.signOut();
+  }
+  
+
+  Future<void> sendCurrentUserEmailVerification() async {
+    final user = _auth.currentUser;
+
+    if (user == null) {
+      throw Exception('No user is currently logged in.');
+    }
+
+    if (user.emailVerified) {
+      return;
+    }
+
+    await user.sendEmailVerification();
   }
 
   Future<void> login({
@@ -216,6 +252,109 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    try {
+      await GoogleSignIn.instance.disconnect();
+    } catch (_) {
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
+    }
+
     await _auth.signOut();
+  }
+
+  Future<void> signInWithGoogleAsCustomer() async {
+    await GoogleSignIn.instance.initialize();
+
+  final GoogleSignInAccount googleUser =
+      await GoogleSignIn.instance.authenticate();
+
+  final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+
+  final credential = GoogleAuthProvider.credential(
+    idToken: googleAuth.idToken,
+  );
+
+  final userCredential = await _auth.signInWithCredential(credential);
+  final user = userCredential.user;
+
+  if (user == null) {
+    throw Exception('Google sign-in failed.');
+  }
+
+  final uid = user.uid;
+  final now = FieldValue.serverTimestamp();
+
+  final userRef = _db.collection(FirestoreCollections.users).doc(uid);
+  final customerRef = _db.collection(FirestoreCollections.customers).doc(uid);
+
+  final userDoc = await userRef.get();
+
+  if (!userDoc.exists) {
+    final displayName = user.displayName ?? '';
+    final nameParts = displayName.trim().split(' ');
+
+    final firstName = nameParts.isNotEmpty && nameParts.first.isNotEmpty
+        ? nameParts.first
+        : 'Customer';
+
+    final lastName = nameParts.length > 1
+        ? nameParts.sublist(1).join(' ')
+        : '';
+
+    final batch = _db.batch();
+
+    batch.set(userRef, {
+      'uid': uid,
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': user.email ?? googleUser.email,
+      'phoneNumber': user.phoneNumber ?? '',
+      'role': UserRoles.customer,
+      'profileImageUrl': user.photoURL,
+      'isEmailVerified': user.emailVerified,
+      'isPhoneVerified': false,
+      'isActive': true,
+      'isBlocked': false,
+      'createdAt': now,
+      'updatedAt': now,
+      'lastLoginAt': now,
+      'authProvider': 'google',
+    });
+
+    batch.set(customerRef, {
+      'userId': uid,
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': user.email ?? googleUser.email,
+      'phoneNumber': user.phoneNumber ?? '',
+      'address': '',
+      'city': 'Ormoc City',
+      'province': 'Leyte',
+      'profileImageUrl': user.photoURL,
+      'totalBookings': 0,
+      'completedBookings': 0,
+      'cancelledBookings': 0,
+      'isActive': true,
+      'createdAt': now,
+      'updatedAt': now,
+    });
+
+    await batch.commit();
+    } else {
+      await userRef.update({
+        'lastLoginAt': now,
+        'updatedAt': now,
+        'authProvider': 'google',
+      });
+    }
+  }
+
+  Future<void> sendPasswordResetEmail({
+    required String email,
+  }) async {
+    await _auth.sendPasswordResetEmail(
+      email: email.trim(),
+    );
   }
 }

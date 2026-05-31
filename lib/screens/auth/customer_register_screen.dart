@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../repositories/auth_repository.dart';
-import '../customer/customer_main_screen.dart';
+import 'email_verification_screen.dart';
 
 class CustomerRegisterScreen extends StatefulWidget {
   const CustomerRegisterScreen({super.key});
@@ -56,7 +56,11 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationScreen(
+            email: emailController.text.trim(),
+          ),
+        ),
         (_) => false,
       );
     } catch (e) {

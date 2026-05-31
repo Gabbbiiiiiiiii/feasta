@@ -52,9 +52,31 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
+    await user.reload();
+
+    final refreshedUser = _auth.currentUser;
+
+    if (refreshedUser == null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+
+    if (!refreshedUser.emailVerified) {
+      await _auth.signOut();
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+
     final userDoc = await _db
         .collection(FirestoreCollections.users)
-        .doc(user.uid)
+        .doc(refreshedUser.uid)
         .get();
 
     if (!mounted) return;
@@ -140,11 +162,11 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Find, Customize, and Book Catering Services',
+                  'Find, customize, and book trusted catering services for your events.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 17,
                     height: 1.4,
                   ),
                 ),
