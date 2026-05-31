@@ -10,7 +10,14 @@ import '../provider/provider_dashboard_screen.dart';
 import 'role_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool canSkip;
+  final Widget? redirectAfterLogin;
+
+  const LoginScreen({
+    super.key,
+    this.canSkip = true,
+    this.redirectAfterLogin,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -71,19 +78,30 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (role == UserRoles.customer) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
-        );
+        if (widget.redirectAfterLogin != null) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => widget.redirectAfterLogin!),
+            (_) => false,
+          );
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
+            (_) => false,
+          );
+        }
       } else if (role == UserRoles.provider) {
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const ProviderDashboardScreen()),
+          (_) => false,
         );
       } else if (role == UserRoles.admin) {
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+          (_) => false,
         );
       } else {
         throw Exception('Invalid user role.');
@@ -95,6 +113,13 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => isLoading = false);
       }
     }
+  }
+
+  void _continueAsGuest() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
+    );
   }
 
   void _showMessage(String message) {
@@ -116,152 +141,184 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 80),
-              Row(
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      color: primary,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Icon(
-                      Icons.restaurant,
-                      color: Colors.white,
-                      size: 32,
-                    ),
+                  const SizedBox(height: 70),
+                  Row(
+                    children: [
+                      Container(
+                        width: 82,
+                        height: 82,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF6333),
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: Image.asset(
+                          'assets/images/mobile_logo.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Text(
+                        'Feasta',
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(height: 55),
                   const Text(
-                    'Feasta',
+                    'Log in or sign up',
                     style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 55),
-              const Text(
-                'Welcome back',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Sign in to continue booking',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 17,
-                ),
-              ),
-              const SizedBox(height: 35),
-              const Text(
-                'Email',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  hintText: 'your.email@example.com',
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Password',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: passwordController,
-                obscureText: obscurePassword,
-                decoration: InputDecoration(
-                  hintText: 'Enter your password',
-                  suffixIcon: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
-                    },
-                    icon: Icon(
-                      obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Forgot Password?',
-                style: TextStyle(
-                  color: primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Login',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+                  const SizedBox(height: 8),
                   const Text(
-                    "Don't have an account? ",
-                    style: TextStyle(color: Colors.grey),
+                    'Browse catering providers first, then log in when you are ready to book.',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RoleSelectionScreen(),
+                  const SizedBox(height: 35),
+                  const Text(
+                    'Email',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      hintText: 'your.email@example.com',
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Password',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: obscurePassword,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your password',
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          setState(() {
+                            obscurePassword = !obscurePassword;
+                          });
+                        },
+                        icon: Icon(
+                          obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                         ),
-                      );
-                    },
-                    child: const Text(
-                      'Create Account',
-                      style: TextStyle(
-                        color: primary,
-                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                    ),
+                  ),
+                  if (widget.canSkip) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: OutlinedButton(
+                        onPressed: _continueAsGuest,
+                        child: const Text(
+                          'Continue as Guest',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "Don't have an account? ",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const RoleSelectionScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Create Account',
+                          style: TextStyle(
+                            color: primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+
+            if (widget.canSkip)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: _continueAsGuest,
+                  icon: const Icon(Icons.close),
+                ),
+              ),
+          ],
         ),
       ),
     );

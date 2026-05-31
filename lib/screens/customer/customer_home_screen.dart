@@ -6,6 +6,7 @@ import '../../repositories/feasta_repository.dart';
 import '../notifications/notifications_screen.dart';
 import 'customer_search_screen.dart';
 import 'provider_profile_screen.dart';
+import '../../core/helpers/auth_guard.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -154,6 +155,50 @@ class _HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isGuestUser) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(22, 24, 22, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _greeting(),
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Hi, Guest!',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                requireLogin(
+                  context,
+                  message:
+                      'Please log in or create an account to view notifications.',
+                );
+              },
+              icon: const Icon(Icons.notifications_outlined),
+            ),
+          ],
+        ),
+      );
+    }
+
     return StreamBuilder<UserModel?>(
       stream: repository.currentUserData(),
       builder: (context, userSnapshot) {
@@ -469,10 +514,14 @@ class _BookAgainSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isGuestUser) {
+      return const SizedBox.shrink();
+    }
     return StreamBuilder<List<BookingModel>>(
       stream: repository.customerCompletedBookings(),
       builder: (context, snapshot) {
         final bookings = snapshot.data ?? [];
+        
 
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox.shrink();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/feasta_models.dart';
 import '../../repositories/feasta_repository.dart';
 import 'event_customization_screen.dart';
+import '../../core/helpers/auth_guard.dart';
 
 class PackageDetailsScreen extends StatelessWidget {
   final ProviderModel provider;
@@ -71,6 +72,15 @@ class PackageDetailsScreen extends StatelessWidget {
                       child: IconButton(
                         icon: const Icon(Icons.favorite_border),
                         onPressed: () async {
+                          if (isGuestUser) {
+                            await requireLogin(
+                              context,
+                              message:
+                                  'Please log in or create an account to add this provider to favorites.',
+                            );
+                            return;
+                          }
+
                           try {
                             await repository.addToFavorites(provider: provider);
 
@@ -292,14 +302,28 @@ class PackageDetailsScreen extends StatelessWidget {
           child: SizedBox(
             height: 56,
             child: ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                final nextScreen = EventCustomizationScreen(
+                  provider: provider,
+                  eventPackage: eventPackage,
+                );
+
+                if (isGuestUser) {
+                  await requireLogin(
+                    context,
+                    message:
+                        'Please log in or create an account to customize your event and continue booking.',
+                    redirectAfterLogin: nextScreen,
+                  );
+                  return;
+                }
+
+                if (!context.mounted) return;
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => EventCustomizationScreen(
-                      provider: provider,
-                      eventPackage: eventPackage,
-                    ),
+                    builder: (_) => nextScreen,
                   ),
                 );
               },

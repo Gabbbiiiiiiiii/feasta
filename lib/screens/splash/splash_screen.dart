@@ -8,6 +8,8 @@ import '../auth/login_screen.dart';
 import '../customer/customer_main_screen.dart';
 import '../provider/provider_dashboard_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../onboarding/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,9 +36,18 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (user == null) {
+      final prefs = await SharedPreferences.getInstance();
+      final hasSeenOnboarding =
+          prefs.getBool(OnboardingScreen.seenOnboardingKey) ?? false;
+
+      if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(
+          builder: (_) =>
+              hasSeenOnboarding ? const LoginScreen() : const OnboardingScreen(),
+        ),
       );
       return;
     }
@@ -109,17 +120,13 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 130,
-                  height: 130,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: const Icon(
-                    Icons.restaurant,
-                    color: Color(0xFFFF6333),
-                    size: 64,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Image.asset(
+                    'assets/images/mobile_logo.png',
+                    width: 130,
+                    height: 130,
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const SizedBox(height: 28),

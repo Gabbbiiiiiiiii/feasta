@@ -4,6 +4,8 @@ import '../../models/feasta_models.dart';
 import '../../repositories/feasta_repository.dart';
 import 'package_details_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/helpers/auth_guard.dart';
+
 
 class ProviderProfileScreen extends StatefulWidget {
   final ProviderModel provider;
@@ -90,68 +92,85 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                   Positioned(
                     top: 14,
                     right: 14,
-                    child: StreamBuilder(
-                      stream: _repository.myFavorites(),
-                      builder: (context, snapshot) {
-                        final docs = snapshot.data?.docs ?? [];
-
-                        final isFavorite = docs.any((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          return data['providerId'] == widget.provider.id;
-                        });
-
-                        return CircleAvatar(
-                          backgroundColor: Colors.white,
-                          child: IconButton(
-                            icon: Icon(
-                              isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: isFavorite
-                                  ? const Color(0xFFFF6333)
-                                  : Colors.black,
-                            ),
-                            onPressed: () async {
-                              try {
-                                if (isFavorite) {
-                                  await _repository.removeFromFavorites(
-                                    widget.provider.id,
-                                  );
-
-                                  if (!mounted) return;
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Removed from favorites.'),
-                                    ),
-                                  );
-                                } else {
-                                  await _repository.addToFavorites(
-                                    provider: widget.provider,
-                                  );
-
-                                  if (!mounted) return;
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Added to favorites.'),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (!mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      e.toString().replaceAll('Exception: ', ''),
-                                    ),
-                                  ),
+                    child: isGuestUser
+                        ? CircleAvatar(
+                            backgroundColor: Colors.white,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.favorite_border,
+                                color: Colors.black,
+                              ),
+                              onPressed: () {
+                                requireLogin(
+                                  context,
+                                  message:
+                                      'Please log in or create an account to add providers to favorites.',
                                 );
-                              }
+                              },
+                            ),
+                          )
+                        : StreamBuilder(
+                            stream: _repository.myFavorites(),
+                            builder: (context, snapshot) {
+                              final docs = snapshot.data?.docs ?? [];
+
+                              final isFavorite = docs.any((doc) {
+                                final data = doc.data() as Map<String, dynamic>;
+                                return data['providerId'] == widget.provider.id;
+                              });
+
+                              return CircleAvatar(
+                                backgroundColor: Colors.white,
+                                child: IconButton(
+                                  icon: Icon(
+                                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                                    color: isFavorite
+                                        ? const Color(0xFFFF6333)
+                                        : Colors.black,
+                                  ),
+                                  onPressed: () async {
+                                    try {
+                                      if (isFavorite) {
+                                        await _repository.removeFromFavorites(
+                                          widget.provider.id,
+                                        );
+
+                                        if (!mounted) return;
+
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Removed from favorites.'),
+                                          ),
+                                        );
+                                      } else {
+                                        await _repository.addToFavorites(
+                                          provider: widget.provider,
+                                        );
+
+                                        if (!mounted) return;
+
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Added to favorites.'),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (!mounted) return;
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            e.toString().replaceAll('Exception: ', ''),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              );
                             },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -238,7 +257,22 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {},
+                            onPressed: () async {
+                              final allowed = await requireLogin(
+                                context,
+                                message: 'Please log in or create an account to message this provider.',
+                              );
+
+                              if (!allowed || !context.mounted) return;
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'You can message this provider after submitting a booking request.',
+                                  ),
+                                ),
+                              );
+                            },
                             icon: const Icon(Icons.chat_bubble_outline),
                             label: const Text('Chat'),
                             style: OutlinedButton.styleFrom(
@@ -254,7 +288,26 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              if (isGuestUser) {
+                                await requireLogin(
+                                  context,
+                                  message:
+                                      'Please log in or create an account before booking. You can browse packages first.',
+                                );
+                                return;
+                              }
+
+                              setState(() {
+                                selectedTab = 0;
+                              });
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please choose a package below to continue booking.'),
+                                ),
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: primary,
                               foregroundColor: Colors.white,

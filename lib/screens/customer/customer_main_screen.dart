@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'customer_home_screen.dart';
+import '../../core/helpers/auth_guard.dart';
 import '../../repositories/auth_repository.dart';
 import '../auth/login_screen.dart';
 import 'customer_bookings_screen.dart';
 import 'customer_favorites_screen.dart';
+import 'customer_home_screen.dart';
 import 'customer_search_screen.dart';
 
 class CustomerMainScreen extends StatefulWidget {
@@ -25,6 +26,23 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
     CustomerProfileScreen(),
   ];
 
+  Future<void> _onTabTapped(int index) async {
+    final protectedTab = index == 2 || index == 3 || index == 4;
+
+    if (protectedTab) {
+      final allowed = await requireLogin(
+        context,
+        message: 'Please log in or create an account to view this section.',
+      );
+
+      if (!allowed || !mounted) return;
+    }
+
+    setState(() {
+      selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFFF6333);
@@ -36,11 +54,7 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
         selectedItemColor: primary,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
+        onTap: _onTabTapped,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -67,25 +81,6 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
             label: 'Profile',
           ),
         ],
-      ),
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-
-  const PlaceholderScreen({
-    super.key,
-    required this.title,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        '$title screen will be connected next.',
-        style: const TextStyle(fontSize: 18),
       ),
     );
   }
